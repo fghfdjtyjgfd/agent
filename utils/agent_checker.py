@@ -28,8 +28,6 @@ and you have to reply "status": "agent"
 2. there is "Agent" in front of or behind the name of content writer for example
    ใหญ่ (Agent), (Agent อร), (Agent ปูน), อรวรรณ บุญลาภ Agent
 3. there is a sentence รับฝากขาย-เช่า, รับจัดหาเช่า-ซื้อ, บริการฝากขาย ปล่อยเช่า, ที่ปรึกษาอสังหา, รับฝากปล่อยเช่า ซื้อขาย บ้าน คอนโด or any sentences that have same meaning
-4. Line ID begins with @ and number 3 digits and 5 english characters 
-   etc. @467uspaj, @065gglvo, @596dighe, @194dhcbf
 
 otherwise it not meet the condition just reply "status": "owner"
 answer as JSON object.
@@ -47,8 +45,9 @@ content = """
 สอบถามข้อมูลเพิ่มเติม ติดต่อได้ที่
 นายสมชาย สมหวัง
 
+รับฝากขาย ที่ดิน ตึก คอนโด
 Tel : 081-710-3257
-Line ID : aonorw25
+Line ID : @286adfey
 """
 
 prompt = ChatPromptTemplate.from_messages(
@@ -61,4 +60,5 @@ json_parser = JsonOutputParser(pydantic_object=CheckerResponse)
 
 agent_checker = prompt | llm | json_parser
 
-print(agent_checker.invoke(content))
+res = agent_checker.invoke(content)
+print(res)
