@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 import pandas as pd
-from agent_names.agent_names import agent_name_list, prefix_name, is_agent
+from utils.agent_names import agent_name_list, prefix_name, is_agent
 
 load_dotenv()
 
@@ -36,7 +36,7 @@ def login_facebook(page):
     except:
         print("Login failed")
         return False
-   
+    
 def extract_post_data(post_element):
     try:
         try:
