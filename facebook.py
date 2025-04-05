@@ -133,8 +133,8 @@ def main():
         facebook_posts_df = pd.DataFrame(posts)
         facebook_agent_posts_df = pd.DataFrame(agent_posts)
 
-        facebook_posts_df.to_csv("./csv_files/facebook_posts.csv")
-        facebook_agent_posts_df.to_csv("./csv_files/facebook_agent_posts_df.csv")
+        facebook_posts_df.to_csv("./csv_files/facebook/facebook_posts.csv")
+        facebook_agent_posts_df.to_csv("./csv_files/facebook/facebook_agent_posts_df.csv")
             
     finally:
         page.close()
