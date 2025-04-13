@@ -8,11 +8,15 @@ GROUP_IDS = [
     "476633613627895", # คอนโดสำหรับนักศึกษา โซนรังสิต ทุกมหาลัย ม.กรุงเทพ ม.ธรรมศาสตร์ ม.รังสิต
     "1428966847950346", # 400 กว่าคน คอนโดใกล้ม.ธรรมศาสตร์ Modiz launch, D Condo, Kave town condo
     "1093378301215297", # หาห้องพักย่านรังสิต ใกล้ ม.กรุงเทพ ม.ธรรมศาสตร์ ม.รังสิต | ห้องพักให้เช่า
-    # "1678826688975625", # บ้านเช่ารังสิต มอกรุงเทพ คลองหลวง
+    "1678826688975625", # บ้านเช่ารังสิต มอกรุงเทพ คลองหลวง
     "141462283186326/buy_sell_discussion", # คอนโดแถวรังสิต ม.รังสิต ม.กรุงเทพ มธ. (ประกาศฟรี)
     "condouniversity", # หอพักให้เช่า คอนโดให้เช่า ย่านรังสิต
     "260556398963387", # หาเพื่อน หารูมเมท ม.กรุงเทพ ม.รังสิต ม.มธ
     "955904261626444", # kave ava, kave TU, modiz
+]
+
+POSTS_URL = [
+    "https://www.facebook.com/MvPropertyRealEstate/posts/pfbid02PFRYiaf1xs3iumm5e5ahdLHTRzaLbaVCLnfZWUan3m5zec5vCjHFCFswfnkmigZal?__cft__[0]=AZVPnhidS8vRHNljTahB3UCErD-XxQFgjS2TluPkZ4g-vfW-kouWVNg9Qw0dUw2K1gIIxb8jLWuSEi_KkIPbogsXhwVo_lJE4Q9x7uy4fZv0YHEBBA2kG_Pok9teQtSB5Kd9G4DyVRpy-9igmWQ1-j9deihHavUwQsS31KnaLlxjfyYukf6FW0NqLQH9dL7TA8k&__tn__=%2CO%2CP-R"
 ]
 
 CONTRACT = """

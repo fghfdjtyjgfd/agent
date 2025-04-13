@@ -126,7 +126,7 @@ class FacebookAutoPoster:
                                     await file_input.set_input_files(valid_image_paths)
                                     await asyncio.sleep(2)
                                     print("        Images uploaded successfully!")
-                            
+                           
                             # Type the message
                             await asyncio.sleep(1)
                             post_text_div = page.locator("form").filter(has_text="สร้างโพสต์").locator("div[role='presentation']")
