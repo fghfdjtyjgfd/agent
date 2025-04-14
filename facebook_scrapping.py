@@ -18,14 +18,13 @@ class FacebookAutoScrapper:
             "base_url": "https://www.facebook.com",
             "email": os.getenv('EMAIL'),
             "password": os.getenv('PASSWORD'),
-            "posts_count": 3,
+            "posts_count": 100,
             "agent_author_path": ".//csv_files/facebook/agent_names_from_renter.csv",
             "renter_file_path": ".//csv_files/facebook/room_renter.csv",
             "seeker_file_path": ".//csv_files/facebook/room_seeker.csv",
             "group_ids": [
-                "1396145167522075",
-                "1093378301215297",
-                "417449789872854",
+                # "385144122582004", # D condo hype เช่าคอนโด หอ ย่าน ม.กรุงเทพ มธ และ ม รังสิต
+                "2334522046872720", # หาห้องพักย่านรังสิต 100,000+ คน
             ]
         }
         if config:
@@ -111,7 +110,8 @@ class FacebookAutoScrapper:
             if len(shared_author_element) >= 2:
                 shared_author = shared_author_element[1].inner_text() if shared_author_element else None
 
-            author_element = post_element.query_selector("h4 span a, h4 a, h3 span a, h3 a")
+            author_element = post_element.query_selector("div[data-ad-rendering-role='profile_name']") #("h4 span a, h4 a, h3 span a, h3 a")
+            author_element = author_element.query_selector('a[href*="/groups/"][role="link"]') if author_element else None
             author = author_element.inner_text() if author_element else "Unknown"
 
             post_link = None
