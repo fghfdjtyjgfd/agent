@@ -1,6 +1,9 @@
+from pprint import pprint
+import re
 import time
 import os
-import datetime
+import openpyxl
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from playwright.sync_api import sync_playwright
 import pandas as pd
@@ -19,9 +22,12 @@ class FacebookAutoScrapper:
             "email": os.getenv('EMAIL'),
             "password": os.getenv('PASSWORD'),
             "posts_count": 100,
-            "agent_author_path": ".//csv_files/facebook/agent_names_from_renter.csv",
-            "renter_file_path": ".//csv_files/facebook/room_renter.csv",
-            "seeker_file_path": ".//csv_files/facebook/room_seeker.csv",
+            "days_limit": 5, # Number of days to consider a post as recent
+            "old_post_tolerance": 5, # Number of old posts allowed before stopping
+            "agent_author_path": ".//csv_files/facebook/agent_names_from_renter.xlsx",
+            "renter_file_path": ".//csv_files/facebook/room_renter.xlsx",
+            "seeker_file_path": ".//csv_files/facebook/room_seeker.xlsx",
+            "raw_posts_path": ".//csv_files/facebook/raw_posts.xlsx",
             "group_ids": [
                 # "385144122582004", # D condo hype เช่าคอนโด หอ ย่าน ม.กรุงเทพ มธ และ ม รังสิต
                 "2334522046872720", # หาห้องพักย่านรังสิต 100,000+ คน
@@ -77,14 +83,14 @@ class FacebookAutoScrapper:
                 print("No cookie prompt detected, continuing...")
             
             try:
-                email_field = page.wait_for_selector("#email", timeout=3000)
+                email_field = page.wait_for_selector("input[name='email']", timeout=3000)
                 if email_field:
-                    page.fill("#email", self.config['email'])
-                    time.sleep(1)
-                    page.fill("#pass", self.config['password'])
-                    time.sleep(1)
-                    page.click("button[name='login']")
-
+                    # page.fill("input[name='email']", self.config['email'])
+                    # time.sleep(1)
+                    # page.fill("input[name='pass']", self.config['password'])
+                    # time.sleep(1)
+                    # page.click("div[aria-label='เข้าสู่ระบบ']")
+                    time.sleep(20)
                     # Save session state
                     context.storage_state(path=self.session_file)
                     print("Successfully logged in!, New session saved! =============================")
@@ -95,13 +101,53 @@ class FacebookAutoScrapper:
             return False
         return True
 
+    def parse_post_date(self, aria_label: str) -> str:
+        now = datetime.now()
+        if not aria_label:
+            return now.strftime("%d/%m/%Y")
+
+        thai_months = {
+            'มกราคม': 1, 'กุมภาพันธ์': 2, 'มีนาคม': 3, 'เมษายน': 4,
+            'พฤษภาคม': 5, 'มิถุนายน': 6, 'กรกฎาคม': 7, 'สิงหาคม': 8,
+            'กันยายน': 9, 'ตุลาคม': 10, 'พฤศจิกายน': 11, 'ธันวาคม': 12
+        }
+
+        full_date_match = re.search(r'(\d+)\s+(\S+)\s+(\d{4})', aria_label)
+        no_year_date_match = re.search(r'(\d+)\s+(\S+)', aria_label)
+        # weeks_match = re.search(r'(\d+)\s*สัปดาห์', aria_label)
+        days_match = re.search(r'(\d+)\s*วัน', aria_label)
+        # hours_match = re.search(r'(\d+)\s*ชั่วโมง', aria_label)
+        # minutes_match = re.search(r'(\d+)\s*นาที', aria_label)
+
+        if full_date_match:
+            day = int(full_date_match.group(1))
+            month_name = full_date_match.group(2)
+            year = int(full_date_match.group(3))
+            month = thai_months.get(month_name)
+            if month:
+                return f"{day:02d}/{month:02d}/{year}"
+        elif no_year_date_match:
+            day = int(no_year_date_match.group(1))
+            month_name = no_year_date_match.group(2)
+            month = thai_months.get(month_name)
+            if month:
+                return f"{day:02d}/{month:02d}/{now.year}"
+        # elif weeks_match:
+        #     return (now - timedelta(weeks=int(weeks_match.group(1)))).strftime("%d/%m/%Y")
+        elif days_match:
+            return (now - timedelta(days=int(days_match.group(1)))).strftime("%d/%m/%Y")
+        # elif hours_match or minutes_match:
+        #     return now.strftime("%d/%m/%Y")
+
+        return now.strftime("%d/%m/%Y")
+
     def extract_post_data(self, post_element):
         try:
             try:
                 see_more = post_element.query_selector("div[role='button']:has-text('ดูเพิ่มเติม')")
                 if see_more:
                     see_more.click()
-                    time.sleep(0.5)
+                    time.sleep(1)
             except Exception as e:
                 print(f"Note: Could not expand 'See more' content: {e}")
 
@@ -115,12 +161,13 @@ class FacebookAutoScrapper:
             author = author_element.inner_text() if author_element else "Unknown"
 
             post_link = None
-            try:
-                timestamp_element = post_element.query_selector("a[href*='/posts/'][role='link']")
-                if timestamp_element:
-                    post_link = timestamp_element.get_attribute("href")
-            except:
-                pass
+            post_date_str = datetime.now().strftime("%d/%m/%Y")  # fallback
+            timestamp_element = post_element.query_selector("a[href*='/posts/'][role='link']")
+            if timestamp_element:
+                post_link = timestamp_element.get_attribute("href")
+                aria_label = timestamp_element.get_attribute("aria-label")
+                print(f"    Extracted aria_label: {aria_label}")
+                post_date_str = self.parse_post_date(aria_label)
 
             content_element = post_element.query_selector("div[data-ad-comet-preview='message']")
             content = content_element.inner_text() if content_element else ""
@@ -134,7 +181,7 @@ class FacebookAutoScrapper:
             post_id = post_element.evaluate("el => el.getAttribute('aria-describedby')")
             
             return {
-                "date": datetime.datetime.now().strftime("%d/%m/%Y"),
+                "date": post_date_str,
                 "author": author,
                 "shared_author": shared_author,
                 "content": content,
@@ -148,60 +195,88 @@ class FacebookAutoScrapper:
 
     def scrape_group_posts(self, page):
         all_posts = []
-        # ========================== End Login codes =================================
-        for i, group_id in enumerate(self.config["group_ids"]):
-            print(f"Scrapping to group ID: {group_id} || from {i+1} of {len(self.config["group_ids"])} groups =============================")
+        csv_fields = ["date", "author", "shared_author", "content", "post_link", "post_id"]
+        raw_posts_path = self.config["raw_posts_path"]
+        os.makedirs(os.path.dirname(raw_posts_path), exist_ok=True)
 
-            # Navigate to the group
-            page.goto(f"{self.config['base_url']}/groups/{group_id}")
+        # Load existing workbook or create a new one
+        if os.path.exists(raw_posts_path):
+            wb = openpyxl.load_workbook(raw_posts_path)
+            ws = wb.active
+        else:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.append(csv_fields)
 
-            # time.sleep(5)
-            page.wait_for_selector("div[role='feed']")
-            # time.sleep(2)
+        try:
+            # ========================== End Login codes =================================
+            for i, group_id in enumerate(self.config["group_ids"]):
+                print(f"Scrapping to group ID: {group_id} || from {i+1} of {len(self.config["group_ids"])} groups =============================")
 
-            posts = []
-            last_height = page.evaluate("document.body.scrollHeight")
-            agent_post_count = 1
+                # Navigate to the group
+                page.goto(f"{self.config['base_url']}/groups/{group_id}")
 
-            while len(posts) < self.config['posts_count']:
-                post_elements = page.query_selector_all("div[role='article']")
-                for post in post_elements:
-                    if len(posts) >= self.config['posts_count']:
-                        break
-                        
-                    post_data = self.extract_post_data(post)
-                    if post_data['shared_author'] is not None:
-                        if post_data['shared_author'].lower() in agent_name_list or is_agent(post_data['shared_author'], prefix_name):
-                            print(f"    Found {agent_post_count} Agent's post: {post_data['shared_author']}")
+                time.sleep(2)
+                page.wait_for_selector("div[role='feed']")
+                # time.sleep(2)
+
+                posts = []
+                last_height = page.evaluate("document.body.scrollHeight")
+                agent_post_count = 1
+
+                while len(posts) < self.config['posts_count']:
+                    post_elements = page.query_selector_all("div[role='article']")
+                    for post in post_elements:
+                        if len(posts) >= self.config['posts_count']:
+                            break
+                            
+                        post_data = self.extract_post_data(post)
+                        if post_data['shared_author'] is not None:
+                            if post_data['shared_author'].lower() in agent_name_list or is_agent(post_data['shared_author'], prefix_name):
+                                print(f"    Found {agent_post_count} Agent's post: {post_data['shared_author']}")
+                                agent_post_count += 1
+                                continue
+                        if post_data['author'].lower() in agent_name_list or is_agent(post_data['author'], prefix_name):
+                            print(f"    Found {agent_post_count} Agent's post: {post_data['author']}")
                             agent_post_count += 1
                             continue
-                    if post_data['author'].lower() in agent_name_list or is_agent(post_data['author'], prefix_name):
-                        print(f"    Found {agent_post_count} Agent's post: {post_data['author']}")
-                        agent_post_count += 1
-                        continue
-                    # Check post_id if it duplicated
-                    if post_data and post_data['post_id']:
-                        if any(p.get('post_id') == post_data['post_id'] for p in posts):
-                            continue
-                            
-                        posts.append(post_data)
-                        print(f"    Collected post {len(posts)}/{self.config['posts_count']}")
-                
-                page.evaluate("window.scrollBy(0, 800)")
-                time.sleep(3)
 
-                new_height = page.evaluate("document.body.scrollHeight")
-                if new_height == last_height:
+                        # Check date of post if it's older than specified days
+                        post_date = datetime.strptime(post_data['date'], "%d/%m/%Y")
+                        if post_date < datetime.now() - timedelta(days=self.config['days_limit']):
+                            self.config["old_post_tolerance"] -= 1
+                            if self.config["old_post_tolerance"] <= 0:
+                                print(f"    Post is older than {self.config['days_limit']} days, stopping...")
+                                self.config['posts_count'] = len(posts)  # Update posts_count to the number of posts collected so far to break while loop
+                                break
+
+                        # Check post_id if it duplicated
+                        if post_data and post_data['post_link']:
+                            if any(p.get('post_link') == post_data['post_link'] for p in posts):
+                                continue
+
+                            posts.append(post_data)
+                            ws.append([post_data[f] for f in csv_fields])
+                            wb.save(raw_posts_path)
+                            print(f"    Collected post {len(posts)}/{self.config['posts_count']}")
+                
                     page.evaluate("window.scrollBy(0, 800)")
-                    time.sleep(2)
+                    time.sleep(5)
+
                     new_height = page.evaluate("document.body.scrollHeight")
                     if new_height == last_height:
-                        print("Reached end of page before collecting requested number of posts")
-                        break
+                        page.evaluate("window.scrollBy(0, 800)")
+                        time.sleep(2)
+                        new_height = page.evaluate("document.body.scrollHeight")
+                        if new_height == last_height:
+                            print("Reached end of page before collecting requested number of posts")
+                            break
 
-                last_height = new_height
+                    last_height = new_height
 
-            all_posts.extend(posts)
+                all_posts.extend(posts)
+        finally:
+            wb.save(raw_posts_path)
 
         return all_posts
  
@@ -215,13 +290,13 @@ class FacebookAutoScrapper:
         seeker_df, renter_df = seeker_renter_split(fb_posts_df)
         renter_df = add_status(renter_df)
 
-        # Export new agent name list to csv
+        # Export new agent name list to excel
         agent_author = renter_df[renter_df['status'] == "agent"]['author'].value_counts()
-        pd.Series(agent_author).to_csv(self.config['agent_author_path'])
+        pd.Series(agent_author).to_excel(self.config['agent_author_path'])
 
-        # Export processed data to csv
-        seeker_df.to_csv(self.config['seeker_file_path'])
-        renter_df.to_csv(self.config['renter_file_path'])
+        # Export processed data to excel
+        seeker_df.to_excel(self.config['seeker_file_path'])
+        renter_df.to_excel(self.config['renter_file_path'])
 
     def run(self):
         """
