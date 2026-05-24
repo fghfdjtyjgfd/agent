@@ -1,6 +1,8 @@
 agent/
 playwright_env/
-csv_files/
+
+csv_files/facebook/*
+
 __pycache__/
 .env
 .git/
