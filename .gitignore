@@ -1,0 +1,12 @@
+agent/
+playwright_env/
+csv_files/
+__pycache__/
+.env
+.git/
+
+.DS_Store
+images/
+temporary_images/
+
+facebook_state.json
