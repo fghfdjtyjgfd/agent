@@ -29,8 +29,12 @@ class FacebookAutoScrapper:
             "seeker_file_path": ".//csv_files/facebook/room_seeker.xlsx",
             "raw_posts_path": ".//csv_files/facebook/raw_posts.xlsx",
             "group_ids": [
-                # "385144122582004", # D condo hype เช่าคอนโด หอ ย่าน ม.กรุงเทพ มธ และ ม รังสิต
+                "385144122582004", # D condo hype เช่าคอนโด หอ ย่าน ม.กรุงเทพ มธ และ ม รังสิต
                 "2334522046872720", # หาห้องพักย่านรังสิต 100,000+ คน
+                "275678356775719", # แนะนำหอ ม.เกษตร
+                "3286381871678927", # หาคอนโดให้เช่า สะพานใหม่ เกษตร หลักสี่ ดอนเมือง บางเขน รัชโยธิน ติด Bts
+                "tucondo",
+                "374078016708868" # Owner Post เจ้าของปล่อยเช่าคอนโด 业主出租群
             ]
         }
         if config:
@@ -83,7 +87,7 @@ class FacebookAutoScrapper:
                 print("No cookie prompt detected, continuing...")
             
             try:
-                email_field = page.wait_for_selector("input[name='email']", timeout=3000)
+                email_field = page.wait_for_selector("input[name='email']", timeout=7000)
                 if email_field:
                     # page.fill("input[name='email']", self.config['email'])
                     # time.sleep(1)
@@ -166,7 +170,6 @@ class FacebookAutoScrapper:
             if timestamp_element:
                 post_link = timestamp_element.get_attribute("href")
                 aria_label = timestamp_element.get_attribute("aria-label")
-                print(f"    Extracted aria_label: {aria_label}")
                 post_date_str = self.parse_post_date(aria_label)
 
             content_element = post_element.query_selector("div[data-ad-comet-preview='message']")
@@ -208,6 +211,7 @@ class FacebookAutoScrapper:
             ws = wb.active
             ws.append(csv_fields)
 
+        original_tolerance = self.config["old_post_tolerance"]
         try:
             # ========================== End Login codes =================================
             for i, group_id in enumerate(self.config["group_ids"]):
@@ -223,6 +227,8 @@ class FacebookAutoScrapper:
                 posts = []
                 last_height = page.evaluate("document.body.scrollHeight")
                 agent_post_count = 1
+                stop_scraping = False
+                self.config["old_post_tolerance"] = original_tolerance
 
                 while len(posts) < self.config['posts_count']:
                     post_elements = page.query_selector_all("div[role='article']")
@@ -247,7 +253,7 @@ class FacebookAutoScrapper:
                             self.config["old_post_tolerance"] -= 1
                             if self.config["old_post_tolerance"] <= 0:
                                 print(f"    Post is older than {self.config['days_limit']} days, stopping...")
-                                self.config['posts_count'] = len(posts)  # Update posts_count to the number of posts collected so far to break while loop
+                                stop_scraping = True
                                 break
 
                         # Check post_id if it duplicated
@@ -260,6 +266,9 @@ class FacebookAutoScrapper:
                             wb.save(raw_posts_path)
                             print(f"    Collected post {len(posts)}/{self.config['posts_count']}")
                 
+                    if stop_scraping:
+                        break
+
                     page.evaluate("window.scrollBy(0, 800)")
                     time.sleep(5)
 
