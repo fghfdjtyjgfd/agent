@@ -2,6 +2,7 @@ agent/
 playwright_env/
 
 csv_files/facebook/*
+csv_files/livinginsider/*
 
 __pycache__/
 .env
